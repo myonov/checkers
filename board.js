@@ -1,18 +1,20 @@
-//(function () {
-    var canvas
-//    var
-        canMakeMove = true
+(function () {
+    var canvas = document.getElementById('board')
+    var ctx = canvas.getContext('2d')
+
+    var canMakeMove = true
     var finishedMove = false
-    var lastAttackingPos
-    var humanPlayer
+    var humanPlayer, computer
     var p1, p2
     var lastP1, lastP2
+    var boardObj
 
-//    var ctx = null
-    ctx = null
+    var ru = [4, 5, 6, 7, 9, 10, 11, null, 12, 13, 14, 15, 17, 18, 19, null, 20, 21, 22, 23, 25, 26, 27, null, 28, 29, 30, 31, null, null, null, null]
+    var lu = [null, 4, 5, 6, 8, 9, 10, 11, null, 12, 13, 14, 16, 17, 18, 19, null, 20, 21, 22, 24, 25, 26, 27, null, 28, 29, 30, null, null, null, null]
+    var rd = [null, null, null, null, 1, 2, 3, null, 4, 5, 6, 7, 9, 10, 11, null, 12, 13, 14, 15, 17, 18, 19, null, 20, 21, 22, 23, 25, 26, 27, null]
+    var ld = [null, null, null, null, 0, 1, 2, 3, null, 4, 5, 6, 8, 9, 10, 11, null, 12, 13, 14, 16, 17, 18, 19, null, 20, 21, 22, 24, 25, 26, 27]
 
-    // var
-    Board = {
+    var Board = {
         BLACK: 0,
         WHITE: 1,
 
@@ -26,21 +28,6 @@
     }
 
 
-    var ru = [4, 5, 6, 7, 9, 10, 11, null, 12, 13, 14, 15, 17, 18, 19, null, 20, 21, 22, 23, 25, 26, 27, null, 28, 29, 30, 31, null, null, null, null]
-    var lu = [null, 4, 5, 6, 8, 9, 10, 11, null, 12, 13, 14, 16, 17, 18, 19, null, 20, 21, 22, 24, 25, 26, 27, null, 28, 29, 30, null, null, null, null]
-    var rd = [null, null, null, null, 1, 2, 3, null, 4, 5, 6, 7, 9, 10, 11, null, 12, 13, 14, 15, 17, 18, 19, null, 20, 21, 22, 23, 25, 26, 27, null]
-    var ld = [null, null, null, null, 0, 1, 2, 3, null, 4, 5, 6, 8, 9, 10, 11, null, 12, 13, 14, 16, 17, 18, 19, null, 20, 21, 22, 24, 25, 26, 27]
-    canvas = document.getElementById('board')
-    ctx = canvas.getContext('2d')
-
-    humanPlayer = window.location.hash
-    if (humanPlayer.toLowerCase() == '#white') {
-        humanPlayer = Board.WHITE
-    } else {
-        humanPlayer = Board.BLACK
-    }
-    console.log(humanPlayer)
-
     Board.getCoordinates = function(x, y) {
         var ret = (7 - y) * 4 + (x - (1 - (y % 2 == 1))) / 2
         if (parseInt(ret) == ret) {
@@ -50,12 +37,12 @@
     }
 
     Board.drawBoard = function (ctx) {
-        var i, j
+        var i, j, q
         ctx.clearRect(0, 0, 400, 400)
         for (i = 0; i < 8; ++i) {
             for (j = 0; j < 8; ++j) {
                 ctx.fillStyle = ['white', 'black'][(i + j) % 2]
-                var q = Board.getCoordinates(i, j)
+                q = Board.getCoordinates(i, j)
                 if ( q != undefined && (q == lastP1 || q == lastP2) ) {
                     ctx.fillStyle = 'yellow'
                 }
@@ -154,43 +141,29 @@
         return tmp
     }
 
+    Board.addAttacksFromPosition = function(boardPos, player, i, direction, result) {
+        var tmp, moves, mv
+
+        tmp = Board.attackDirection(boardPos, player, i, direction)
+        if ( tmp != null ) {
+            moves = Board.attackingMovesFromPosition(tmp, player, direction[direction[i]], true)
+            for (mv in moves) {
+                result.push([moves[mv][0], [i].concat(moves[mv][1])])
+            }
+        }
+    }
+
     Board.attackingMovesFromPosition = function(boardPos, player, i, returnPos) {
         var result = []
-        var moves
-        var mv, tmpBoard
 
         if ( !Board.enemy(player, boardPos[i]) ) {
             if (Board.movesUp(boardPos[i])) {
-                tmp = Board.attackDirection(boardPos, player, i, ru)
-                if ( tmp != null ) {
-                    moves = Board.attackingMovesFromPosition(tmp, player, ru[ru[i]], true)
-                    for (mv in moves) {
-                        result.push([moves[mv][0], [i].concat(moves[mv][1])])
-                    }
-                }
-                tmp = Board.attackDirection(boardPos, player, i, lu)
-                if ( tmp != null ) {
-                    moves = Board.attackingMovesFromPosition(tmp, player, lu[lu[i]], true)
-                    for (mv in moves) {
-                        result.push([moves[mv][0], [i].concat(moves[mv][1])])
-                    }
-                }
+                Board.addAttacksFromPosition(boardPos, player, i, lu, result)
+                Board.addAttacksFromPosition(boardPos, player, i, ru, result)
             }
             if (Board.movesDown(boardPos[i])) {
-                tmp = Board.attackDirection(boardPos, player, i, ld)
-                if ( tmp != null ) {
-                    moves = Board.attackingMovesFromPosition(tmp, player, ld[ld[i]], true)
-                    for (mv in moves) {
-                        result.push([moves[mv][0], [i].concat(moves[mv][1])])
-                    }
-                }
-                tmp = Board.attackDirection(boardPos, player, i, rd)
-                if ( tmp != null ) {
-                    moves = Board.attackingMovesFromPosition(tmp, player, rd[rd[i]], true)
-                    for (mv in moves) {
-                        result.push([moves[mv][0], [i].concat(moves[mv][1])])
-                    }
-                }
+                Board.addAttacksFromPosition(boardPos, player, i, ld, result)
+                Board.addAttacksFromPosition(boardPos, player, i, rd, result)
             }
         }
         if ( result.length == 0 ) {
@@ -216,9 +189,19 @@
         return result
     }
 
-    Board.possibleMoves = function (boardPos, player) {
-        var result
+    Board.addOrdinaryMove = function(boardPos, i, direction, result) {
         var tmp
+
+        if (boardPos[direction[i]] == Board.EMPTY) {
+            tmp = boardPos.slice()
+            tmp[i] = Board.EMPTY
+            tmp[direction[i]] = boardPos[i]
+            result.push([tmp, [i, direction[i]]])
+        }
+    }
+
+    Board.possibleMoves = function(boardPos, player) {
+        var result
         var i
 
         result = Board.attackingMoves(boardPos, player)
@@ -229,32 +212,12 @@
         for (i = 0; i < 32; ++i) {
             if (!Board.enemy(player, boardPos[i])) {
                 if (Board.movesUp(boardPos[i])) {
-                    if (boardPos[lu[i]] == Board.EMPTY) {
-                        tmp = boardPos.slice()
-                        tmp[i] = Board.EMPTY
-                        tmp[lu[i]] = boardPos[i]
-                        result.push([tmp, [i, lu[i]]])
-                    }
-                    if (boardPos[ru[i]] == Board.EMPTY) {
-                        tmp = boardPos.slice()
-                        tmp[i] = Board.EMPTY
-                        tmp[ru[i]] = boardPos[i]
-                        result.push([tmp, [i, ru[i]]])
-                    }
+                    Board.addOrdinaryMove(boardPos, i, lu, result)
+                    Board.addOrdinaryMove(boardPos, i, ru, result)
                 }
                 if (Board.movesDown(boardPos[i])) {
-                    if (boardPos[ld[i]] == Board.EMPTY) {
-                        tmp = boardPos.slice()
-                        tmp[i] = Board.EMPTY
-                        tmp[ld[i]] = boardPos[i]
-                        result.push([tmp, [i, ld[i]]])
-                    }
-                    if (boardPos[rd[i]] == Board.EMPTY) {
-                        tmp = boardPos.slice()
-                        tmp[i] = Board.EMPTY
-                        tmp[rd[i]] = boardPos[i]
-                        result.push([tmp, [i, rd[i]]])
-                    }
+                    Board.addOrdinaryMove(boardPos, i, ld, result)
+                    Board.addOrdinaryMove(boardPos, i, rd, result)
                 }
             }
         }
@@ -262,12 +225,11 @@
     }
 
     Board.isStable = function(boardPos, player) {
-        var moves = Board.attackingMoves(boardPos, player)
-        return moves.length == 0
+        return Board.attackingMoves(boardPos, player).length == 0
     }
 
     Board.evalPosition = function(boardPos) {
-        var i, j, br, wr
+        var i, br, wr
 
         var sideSquares = [0, 8, 16, 24, 7, 15, 23, 31]
         var centerSquares = [9, 17, 13, 21, 10, 18, 14, 22]
@@ -315,7 +277,7 @@
     }
 
     Board.makeMove = function (boardPos, player, depth, move) {
-        var moveList, r, bestMove, i, m
+        var moveList, r, bestMove, i, m, l
 
         if (depth <= 0 && Board.isStable(boardPos, player)) {
             return [Board.evalPosition(boardPos), move]
@@ -353,17 +315,12 @@
         var possibleMoves
         var move, i
 
-        if ( lastAttackingPos != undefined && p1 != lastAttackingPos ) {
-            return false
-        }
-
         if ( attackingMoves.length > 0 ) {
             for(i = 0; i < attackingMoves.length; ++i) {
                 move = attackingMoves[i]
                 if ( move[1][0] == p1 && move[1][1] == p2 ) {
                     if ( move[1].length == 2 ) {
                         finishedMove = true
-                        lastAttackingPos = undefined
                     }
                     return true
                 }
@@ -376,30 +333,11 @@
             move = possibleMoves[i]
             if (move[1][0] == p1 && move[1][1] == p2) {
                 finishedMove = true
-                lastAttackingPos = undefined
                 return true
             }
         }
 
         return false
-    }
-
-    count = 0
-    last = null
-    dbg = []
-    var computeTree = function(pos, player, depth) {
-        console.log(pos, player, depth)
-        count++
-        if (depth == 0) {
-            last = pos
-            dbg.push(pos)
-            return
-        }
-        var kk = Board.possibleMoves(pos, player)
-        for (var i1 = 0; i1 < kk.length; ++i1) {
-            console.log(kk[i1][1])
-            computeTree(kk[i1][0], player ? 0 : 1, depth - 1)
-        }
     }
 
     Board.applyMove = function(boardObj, p1, p2, player) {
@@ -444,39 +382,13 @@
         boardObj[p1] = Board.EMPTY
     }
 
-//    var
-//        initial = [
-//        0, 0, 0, 0,
-//        0, 0, 0, 0,
-//        0, 0, 0, 0,
-//        5, 5, 5, 5,
-//        5, 5, 5, 5,
-//        1, 1, 1, 1,
-//        1, 1, 1, 1,
-//        1, 1, 1, 1
-//    ]
-//    var
-//        starting = [
-//        0, 0, 0, 0,
-//        0, 5, 2, 0,
-//        0, 5, 0, 5,
-//        5, 0, 0, 5,
-//        5, 1, 5, 5,
-//        5, 1, 1, 1,
-//        5, 1, 3, 1,
-//        1, 5, 1, 1
-//    ]
-//    zz = Board.possibleMoves(starting, 0)
-//    computeTree(starting, 0, 3)
-//    console.log(count)
-//    console.log(zz)
-//    Board.drawPosition(ctx, initial)
-//    console.log(count)
-//    Board.drawPosition(ctx, last)
-//    Board.drawPosition(ctx, zz[0][0])
-//    console.log(zz[0][1])
-//    console.log(Board.makeMove(starting, Board.BLACK, 3))
-
+    humanPlayer = window.location.hash
+    if (humanPlayer.toLowerCase() == '#white') {
+        humanPlayer = Board.WHITE
+    } else {
+        humanPlayer = Board.BLACK
+    }
+    computer = 1 - humanPlayer
 
     boardObj = [
         0, 0, 0, 0,
@@ -489,25 +401,13 @@
         1, 1, 1, 1
     ]
 
-//    boardObj = [
-//        0, 0, 0, 0,
-//        0, 5, 2, 0,
-//        0, 5, 0, 5,
-//        5, 0, 0, 5,
-//        5, 1, 5, 5,
-//        5, 1, 1, 1,
-//        5, 1, 3, 1,
-//        1, 5, 1, 1
-//    ]
-
     Board.drawPosition(ctx, boardObj)
-
     if ( humanPlayer == Board.WHITE ) {
-        computerMove = Board.makeMove(boardObj, 1 - humanPlayer, 6)
+        var computerMove = Board.makeMove(boardObj, computer, 6)
         console.log(computerMove)
 
         canMakeMove = false
-        Board.applyMove(boardObj, computerMove[1][0], computerMove[1][1], 1 - humanPlayer)
+        Board.applyMove(boardObj, computerMove[1][0], computerMove[1][1], computer)
         Board.drawPosition(ctx, boardObj)
         canMakeMove = true
     }
@@ -516,6 +416,8 @@
         var computerMove
         var x = parseInt((event.pageX - canvas.offsetLeft) / 50)
         var y = parseInt((event.pageY - canvas.offsetTop) / 50)
+        var k
+        var interval
 
         if ( canMakeMove ) {
             if ( p1 != undefined ) {
@@ -539,17 +441,17 @@
                         canMakeMove = false
                         console.log(boardObj)
                         Board.drawPosition(ctx, boardObj)
-                        computerMove = Board.makeMove(boardObj, 1 - humanPlayer, 6)
+                        computerMove = Board.makeMove(boardObj, computer, 6)
                         console.log(computerMove)
                         if (computerMove[1].length == 2) {
-                            Board.applyMove(boardObj, computerMove[1][0], computerMove[1][1], 1 - humanPlayer)
+                            Board.applyMove(boardObj, computerMove[1][0], computerMove[1][1], computer)
                             Board.drawPosition(ctx, boardObj)
                             canMakeMove = true
                         } else {
-                            var k = 1
-                            Board.applyMove(boardObj, computerMove[1][0], computerMove[1][1], 1 - humanPlayer)
+                            Board.applyMove(boardObj, computerMove[1][0], computerMove[1][1], computer)
                             Board.drawPosition(ctx, boardObj)
-                            var interval = setInterval(function () {
+                            k = 1
+                            interval = setInterval(function () {
                                 if (k == computerMove[1].length - 1) {
                                     clearInterval(interval)
                                     console.log(boardObj)
@@ -558,11 +460,14 @@
                                 }
                                 console.log('k: ', k)
                                 console.log('computerMove[1].length: ', computerMove[1].length)
-                                Board.applyMove(boardObj, computerMove[1][k], computerMove[1][k+1], 1 - humanPlayer)
+                                Board.applyMove(boardObj, computerMove[1][k], computerMove[1][k+1], computer)
                                 Board.drawPosition(ctx, boardObj)
                                 k++
                             }, 250)
                         }
+                    } else {
+                        p1 = p2
+                        p2 = undefined
                     }
                 } else {
                     p1 = p2 = undefined
@@ -571,4 +476,4 @@
         }
 
     }, false)
-//}())
+}())
