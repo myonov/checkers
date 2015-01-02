@@ -284,7 +284,7 @@
         return br - wr
     }
 
-    Board.makeMove = function (boardPos, player, depth, move) {
+    Board.makeMove = function (boardPos, player, depth, a, b, move) {
         var moveList, r, bestMove, i, m, l
 
         if (depth <= 0 && Board.isStable(boardPos, player)) {
@@ -301,16 +301,24 @@
         moveList = Board.possibleMoves(boardPos, player)
         for (i = 0; i < moveList.length; ++i) {
             m = moveList[i]
-            l = Board.makeMove(m[0], 1 - player, depth - 1, m[1])
+            l = Board.makeMove(m[0], 1 - player, depth - 1, a, b, m[1])
             if (player == Board.BLACK) {
-                if (l[0] >= r) {
-                    r = l[0]
+                if (l[0] >= a) {
+                    a = l[0]
+                    r = a
                     bestMove = m[1]
                 }
+                if ( b < a ) {
+                    return [Board.BLACK_WINS, []]
+                }
             } else {
-                if (l[0] <= r) {
-                    r = l[0]
+                if (l[0] <= b) {
+                    b = l[0]
+                    r = b
                     bestMove = m[1]
+                }
+                if ( b < a ) {
+                    return [Board.WHITE_WINS, []]
                 }
             }
         }
@@ -417,7 +425,7 @@
     }
 
     if ( humanPlayer == Board.WHITE ) {
-        var computerMove = Board.makeMove(boardObj, computer, 6)
+        var computerMove = Board.makeMove(boardObj, computer, 6, Board.WHITE_WINS, Board.BLACK_WINS)
         Board.log(computerMove)
 
         canMakeMove = false
@@ -455,7 +463,7 @@
                         p2 = undefined
                         canMakeMove = false
                         Board.log(boardObj)
-                        computerMove = Board.makeMove(boardObj, computer, 6)
+                        computerMove = Board.makeMove(boardObj, computer, 6, Board.WHITE_WINS, Board.BLACK_WINS)
                         Board.log(computerMove)
                         if (computerMove[1].length == 2) {
                             Board.applyMove(boardObj, computerMove[1][0], computerMove[1][1], computer, highlightCallback)
