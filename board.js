@@ -1,9 +1,8 @@
-(function () {
+(function (verbose) {
     var canvas = document.getElementById('board')
     var ctx = canvas.getContext('2d')
 
     var canMakeMove = true
-    var finishedMove = false
     var humanPlayer, computer
     var p1, p2
     var lastP1, lastP2
@@ -27,6 +26,11 @@
         BLACK_WINS: 100
     }
 
+    Board.log = function() {
+        if (verbose) {
+            console.log.apply(console, arguments)
+        }
+    }
 
     Board.getCoordinates = function(x, y) {
         var ret = (7 - y) * 4 + (x - (1 - (y % 2 == 1))) / 2
@@ -36,6 +40,10 @@
         return undefined
     }
 
+    Board.highlightLastMove = function(pos) {
+        return pos != undefined && (pos == lastP1 || pos == lastP2)
+    }
+
     Board.drawBoard = function (ctx) {
         var i, j, q
         ctx.clearRect(0, 0, 400, 400)
@@ -43,7 +51,7 @@
             for (j = 0; j < 8; ++j) {
                 ctx.fillStyle = ['white', 'black'][(i + j) % 2]
                 q = Board.getCoordinates(i, j)
-                if ( q != undefined && (q == lastP1 || q == lastP2) ) {
+                if ( Board.highlightLastMove(q) ) {
                     ctx.fillStyle = 'yellow'
                 }
                 ctx.fillRect(i * 50, j * 50, 50, 50)
@@ -320,30 +328,30 @@
                 move = attackingMoves[i]
                 if ( move[1][0] == p1 && move[1][1] == p2 ) {
                     if ( move[1].length == 2 ) {
-                        finishedMove = true
+                        return [true, true]
                     }
-                    return true
+                    return [true, false]
                 }
             }
-            return false
+            return [false, false]
         }
 
         possibleMoves = Board.possibleMoves(boardObj, humanPlayer)
         for(i = 0; i < possibleMoves.length; ++i) {
             move = possibleMoves[i]
             if (move[1][0] == p1 && move[1][1] == p2) {
-                finishedMove = true
-                return true
+                return [true, true]
             }
         }
 
-        return false
+        return [false, false]
     }
 
-    Board.applyMove = function(boardObj, p1, p2, player) {
-        console.log('mv ', p1, p2, ['black', 'white'][player])
-        lastP1 = p1
-        lastP2 = p2
+    Board.applyMove = function(boardObj, p1, p2, player, callback) {
+        Board.log('mv ', p1, p2, ['black', 'white'][player])
+        if (callback) {
+            callback(p1, p2)
+        }
         if ( p1 < p2 ) {
             if (p2 > 27 && boardObj[p1] < 2) {
                 boardObj[p1] += 2 // HACK: make it king and then move it
@@ -402,12 +410,18 @@
     ]
 
     Board.drawPosition(ctx, boardObj)
+
+    var highlightCallback = function(p1, p2) {
+        lastP1 = p1
+        lastP2 = p2
+    }
+
     if ( humanPlayer == Board.WHITE ) {
         var computerMove = Board.makeMove(boardObj, computer, 6)
-        console.log(computerMove)
+        Board.log(computerMove)
 
         canMakeMove = false
-        Board.applyMove(boardObj, computerMove[1][0], computerMove[1][1], computer)
+        Board.applyMove(boardObj, computerMove[1][0], computerMove[1][1], computer, highlightCallback)
         Board.drawPosition(ctx, boardObj)
         canMakeMove = true
     }
@@ -418,6 +432,7 @@
         var y = parseInt((event.pageY - canvas.offsetTop) / 50)
         var k
         var interval
+        var cMove
 
         if ( canMakeMove ) {
             if ( p1 != undefined ) {
@@ -428,39 +443,38 @@
             } else {
                 p1 = Board.getCoordinates(x, y)
             }
-            console.log('p1: ', p1, 'p2: ', p2, humanPlayer)
+            Board.log('p1: ', p1, 'p2: ', p2, humanPlayer)
             if ( p1 != undefined && p2 != undefined ) {
-                if (Board.checkMove(boardObj, p1, p2, humanPlayer)) {
-                    console.log(' -- here')
+                cMove = Board.checkMove(boardObj, p1, p2, humanPlayer)
+                if (cMove[0]) {
+                    Board.log(' -- here')
                     Board.applyMove(boardObj, p1, p2, humanPlayer)
                     Board.drawPosition(ctx, boardObj)
-                    if (finishedMove) {
+                    if (cMove[1]) {
                         p1 = undefined
                         p2 = undefined
-                        finishedMove = false
                         canMakeMove = false
-                        console.log(boardObj)
-                        Board.drawPosition(ctx, boardObj)
+                        Board.log(boardObj)
                         computerMove = Board.makeMove(boardObj, computer, 6)
-                        console.log(computerMove)
+                        Board.log(computerMove)
                         if (computerMove[1].length == 2) {
-                            Board.applyMove(boardObj, computerMove[1][0], computerMove[1][1], computer)
+                            Board.applyMove(boardObj, computerMove[1][0], computerMove[1][1], computer, highlightCallback)
                             Board.drawPosition(ctx, boardObj)
                             canMakeMove = true
                         } else {
-                            Board.applyMove(boardObj, computerMove[1][0], computerMove[1][1], computer)
+                            Board.applyMove(boardObj, computerMove[1][0], computerMove[1][1], computer, highlightCallback)
                             Board.drawPosition(ctx, boardObj)
                             k = 1
                             interval = setInterval(function () {
                                 if (k == computerMove[1].length - 1) {
                                     clearInterval(interval)
-                                    console.log(boardObj)
+                                    Board.log(boardObj)
                                     canMakeMove = true
                                     return
                                 }
-                                console.log('k: ', k)
-                                console.log('computerMove[1].length: ', computerMove[1].length)
-                                Board.applyMove(boardObj, computerMove[1][k], computerMove[1][k+1], computer)
+                                Board.log('k: ', k)
+                                Board.log('computerMove[1].length: ', computerMove[1].length)
+                                Board.applyMove(boardObj, computerMove[1][k], computerMove[1][k+1], computer, highlightCallback)
                                 Board.drawPosition(ctx, boardObj)
                                 k++
                             }, 250)
@@ -476,4 +490,5 @@
         }
 
     }, false)
-}())
+    window.Board = Board
+}(true))
